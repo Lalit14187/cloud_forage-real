@@ -1,0 +1,607 @@
+
+{% extends 'base.html' %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+
+<!-- Dashboard heading -->
+<section class="dash-heading">
+    <div>
+        <div class="eyebrow">
+            <i class="pulse"></i>
+            CLOUD CONTROL CENTER
+        </div>
+
+        <h1>Your computer, <span>your rules.</span></h1>
+
+        <p>
+            Welcome back, {{ current_user.username }}.
+            Your learning lab is ready.
+        </p>
+    </div>
+
+    <div class="sim-badge">
+        ● &nbsp;LOCAL PROCESS MODE
+    </div>
+</section>
+
+<section class="panel" style="margin:18px 0;padding:20px">
+    <div class="panel-head"><div><div class="section-kicker">THIS COMPUTER</div><h2>Live host resources <span class="count-badge" id="queue-count">{{ queued_count }} waiting</span></h2></div><span class="panel-icon">⌁</span></div>
+    <p class="panel-desc">CloudForge starts and monitors real local worker processes. Requested CPU and RAM are reservations; actual worker memory and CPU are measured separately.</p>
+    <div class="metrics host-metrics">
+        <article class="metric-card"><div class="metric-label">HOST CPU <span>total use</span></div><div class="metric-value"><span id="host-cpu">{{ host.cpu_percent|round(0) }}</span><small>%</small></div><div class="meter"><i id="host-cpu-meter" style="width:{{ host.cpu_percent }}%"></i></div><small class="metric-foot">{{ host.cpu_count }} logical cores · {{ host.allocated_cpu }} vCPU reserved</small></article>
+        <article class="metric-card"><div class="metric-label">HOST MEMORY <span>physical RAM</span></div><div class="metric-value"><span id="host-memory">{{ host.memory_percent|round(0) }}</span><small>%</small></div><div class="meter"><i id="host-memory-meter" style="width:{{ host.memory_percent }}%"></i></div><small class="metric-foot"><span id="host-available">{{ host.ram_available_gb }}</span> GB available · {{ host.allocated_ram }} GB reserved</small></article>
+        <article class="metric-card"><div class="metric-label">MANAGED PROCESSES <span>actual OS tasks</span></div><div class="metric-value"><span id="managed-count">0</span><small>running</small></div><div class="meter"><i id="process-meter" style="width:0%"></i></div><small class="metric-foot">Worker RSS: <span id="process-rss">0</span> MB · process CPU <span id="process-cpu">0</span>%</small></article>
+        <article class="metric-card"><div class="metric-label">HOST DISK <span>physical volume</span></div><div class="metric-value"><span id="host-disk">{{ (100 * (host.disk_total - host.disk_free) / host.disk_total)|round(0) if host.disk_total else 0 }}</span><small>% used</small></div><div class="meter"><i id="host-disk-meter" style="width:{{ (100 * (host.disk_total - host.disk_free) / host.disk_total) if host.disk_total else 0 }}%"></i></div><small class="metric-foot"><span id="host-disk-free">{{ (host.disk_free / 1073741824)|round(1) }}</span> GB available on app drive</small></article>
+    </div>
+    <div class="panel-head" style="margin-top:20px"><div><div class="section-kicker">CPU SCHEDULING LAB</div><h2>Ready queue policy: {{ scheduler }}</h2></div></div>
+    <div class="table-wrap"><table><thead><tr><th>ALGORITHM</th><th>AVG WAIT</th><th>AVG TURNAROUND</th><th>JOBS COMPARED</th></tr></thead><tbody>
+        {% for name, values in scheduler_metrics.items() %}<tr><td><b>{{ name }}</b>{% if name == 'SJF' %}<small>Shortest job first</small>{% elif name == 'Priority' %}<small>Lower number runs first</small>{% elif name == 'Round Robin' %}<small>{{ values.quantum_seconds }}-second quantum · order only for workers</small>{% else %}<small>First come, first served</small>{% endif %}</td><td>{{ values.average_wait }} s</td><td>{{ values.average_turnaround }} s</td><td>{{ values.ready_count }}</td></tr>{% endfor %}
+    </tbody></table></div>
+    <small class="metric-foot">These textbook averages compare active and waiting tasks as if they arrived together. They explain FCFS, SJF, Priority and {{ scheduler_quantum }}-second Round Robin; the host OS still schedules running processes, and CloudForge cannot preempt a live worker.</small>
+    <div class="panel-head" style="margin-top:16px"><div><div class="section-kicker">RESOURCE WAIT QUEUE</div><h2>{{ resource_waits|length }} waiting for resources</h2></div></div>
+    {% if resource_waits %}<div class="table-wrap"><table><thead><tr><th>PROCESS</th><th>WAIT REASON</th><th>RESERVATION</th><th>POLICY</th></tr></thead><tbody>{% for item in resource_waits %}<tr><td>{{ item.name }}</td><td>{{ item.wait_reason or 'Waiting for host capacity' }}</td><td>{{ item.cpu }} vCPU · {{ item.ram }} GB RAM</td><td>{{ item.scheduler }}{% if item.scheduler == 'Round Robin' %} · q={{ item.rr_quantum }}s{% endif %}</td></tr>{% endfor %}</tbody></table></div>{% else %}<small class="metric-foot">No process is waiting for host CPU or RAM reservations.</small>{% endif %}
+    <small class="metric-foot" style="display:block;margin-top:12px">DBMS lab: SQLite transactions, foreign keys, constraints, indexes, joins, migrations and activity audit. OS lab: process states, CPU scheduling, resource allocation, waiting and a shared mutex critical section.</small>
+</section>
+
+<!-- Resource usage metrics -->
+<section class="metrics">
+    {% for name, data in limits.items() %}
+        <article class="metric-card">
+
+            <div class="metric-label">
+                {{ name }}
+                <span>{{ data[2] }}</span>
+            </div>
+
+            <div class="metric-value">
+                {{ data[0] }}
+                <small>/ {{ data[1] }}</small>
+            </div>
+
+            <div class="meter">
+                <i
+             style="width:{{ [((data[0] / data[1]) * 100)|round(0), 100]|min }}%"
+                ></i>
+            </div>
+
+            <small class="metric-foot">
+                {{ [data[1] - data[0], 0]|max }}
+                {{ data[2] }} available · running instances
+            </small>
+
+        </article>
+    {% endfor %}
+</section>
+
+<!-- Main dashboard layout -->
+<div class="dashboard-grid">
+
+    <!-- Instances section -->
+    <section class="panel instances-panel">
+
+        <div class="panel-head">
+            <div>
+                <div class="section-kicker">COMPUTE</div>
+
+                <h2>
+                    Your instances
+                    <span class="count-badge">
+                        {{ instances|length }}
+                    </span>
+                </h2>
+            </div>
+
+            <span class="panel-icon">▦</span>
+        </div>
+
+        {% if instances %}
+
+            <div class="table-wrap">
+                <table>
+
+                    <thead>
+                        <tr>
+                            <th>INSTANCE</th>
+
+                            {% if current_user.role == 'admin' %}
+                                <th>OWNER</th>
+                            {% endif %}
+
+                            <th>CONFIGURATION</th>
+                            <th>STATUS</th>
+                            <th>SYNC (MUTEX)</th>
+                            <th>ACTIONS</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for vm in instances %}
+                            <tr>
+
+                                <td>
+                                    <b class="resource-name">
+                                        {{ vm.name }}
+                                    </b>
+
+                                    <small>
+                                        #CF-{{ '%04d'|format(vm.id) }}
+                                    </small>
+                                </td>
+
+                                {% if current_user.role == 'admin' %}
+                                    <td>{{ vm.username }}</td>
+                                {% endif %}
+
+                                <td>
+                                    {{ vm.os }}
+
+                                    <small>
+                                        {{ vm.cpu }} vCPU ·
+                                        {{ vm.ram }} GB ·
+                                        {{ vm.storage }} GB
+                                    </small>
+                                </td>
+
+                                <td>
+                                    <span class="status {{ vm.display_status }}">
+                                        <i></i>
+                                        {{ vm.display_status|capitalize }}
+                                    </span>
+                                    {% if vm.pid %}<small>PID {{ vm.pid }} · {{ (vm.actual_rss / 1048576)|round(1) }} MB RSS</small>{% elif vm.wait_reason %}<small>{{ vm.wait_reason }}</small>{% endif %}
+                                </td>
+
+                                <td>
+                                    {% if vm.pid and vm.os_process_id %}
+                                        {% if mutex_owner == vm.os_process_id %}
+                                            <form method="post" action="{{ url_for('process_mutex', process_id=vm.os_process_id, action='release') }}">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                                <button type="submit" class="quiet-btn">Release lock</button>
+                                            </form>
+                                            <small>Inside critical section</small>
+                                        {% elif mutex_owner %}
+                                            <small>Waiting · mutex busy</small>
+                                            <form method="post" action="{{ url_for('process_mutex', process_id=vm.os_process_id, action='acquire') }}">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                                <button type="submit" class="quiet-btn">Request lock</button>
+                                            </form>
+                                        {% else %}
+                                            <form method="post" action="{{ url_for('process_mutex', process_id=vm.os_process_id, action='acquire') }}">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                                <button type="submit" class="quiet-btn">Acquire lock</button>
+                                            </form>
+                                        {% endif %}
+                                    {% else %}<small>Start a process first</small>{% endif %}
+                                </td>
+
+                                <!-- Instance action buttons -->
+                                <td>
+                                    <div class="actions">
+
+                                        {% if vm.display_status == 'running' %}
+
+                                            <form
+                                                method="post"
+                                                action="{{ url_for('instance_action', item_id=vm.id, action='stop') }}"
+                                            >
+                                                <input
+                                                    type="hidden"
+                                                    name="csrf_token"
+                                                    value="{{ csrf_token }}"
+                                                >
+
+                                                <button type="submit" title="Stop">
+                                                    Ⅱ
+                                                </button>
+                                            </form>
+
+                                        {% else %}
+
+                                            <form
+                                                method="post"
+                                                action="{{ url_for('instance_action', item_id=vm.id, action='start') }}"
+                                            >
+                                                <input
+                                                    type="hidden"
+                                                    name="csrf_token"
+                                                    value="{{ csrf_token }}"
+                                                >
+
+                                                <button type="submit" title="Start">
+                                                    ▶
+                                                </button>
+                                            </form>
+
+                                        {% endif %}
+
+                                        <form
+                                            method="post"
+                                            action="{{ url_for('instance_action', item_id=vm.id, action='restart') }}"
+                                        >
+                                            <input
+                                                type="hidden"
+                                                name="csrf_token"
+                                                value="{{ csrf_token }}"
+                                            >
+
+                                            <button type="submit" title="Restart">
+                                                ↻
+                                            </button>
+                                        </form>
+
+                                        <form
+                                            method="post"
+                                            action="{{ url_for('instance_action', item_id=vm.id, action='delete') }}"
+                                        >
+                                            <input
+                                                type="hidden"
+                                                name="csrf_token"
+                                                value="{{ csrf_token }}"
+                                            >
+
+                                            <button
+                                                type="submit"
+                                                class="danger-action"
+                                                title="Delete"
+                                            >
+                                                ⌫
+                                            </button>
+                                        </form>
+
+                                    </div>
+                                </td>
+
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+
+                </table>
+            </div>
+
+        {% else %}
+
+            <div class="empty-state">
+                <span>☁</span>
+                <b>Your process lab is waiting.</b>
+                <small>Create your first instance to get started.</small>
+            </div>
+
+        {% endif %}
+
+    </section>
+
+    <!-- Right-side panels -->
+    <aside class="side-column">
+
+        <!-- Create instance panel -->
+        <section class="panel create-panel">
+
+            <div class="panel-head">
+                <div>
+                    <div class="section-kicker">GET STARTED</div>
+                    <h2>New instance</h2>
+                </div>
+
+                <span class="panel-icon">＋</span>
+            </div>
+
+            <p class="panel-desc">
+                Starts a genuine, low-impact local worker process. The selected OS is environment metadata, not a separate VM.
+            </p>
+
+            <form
+                method="post"
+                action="{{ url_for('create_instance') }}"
+                class="form-stack compact-form"
+            >
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token }}"
+                >
+
+                <label>
+                    Instance name
+
+                    <input
+                        name="name"
+                        required
+                        maxlength="40"
+                        placeholder="e.g. web-server"
+                    >
+                </label>
+
+                <label>
+                    Operating system
+
+                    <select name="os">
+                        {% for os in os_options %}
+                            <option>{{ os }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <div class="form-row">
+
+                    <label>
+                        CPU
+
+                        <select name="cpu">
+                            {% for n in [1, 2, 4, 8, 16] %}
+                                <option value="{{ n }}">
+                                    {{ n }} vCPU
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </label>
+
+                    <label>
+                        Memory
+
+                        <select name="ram">
+                            {% for n in [1, 2, 4, 8, 16, 32, 64] %}
+                                <option
+                                    value="{{ n }}"
+                                    {% if n == 4 %}selected{% endif %}
+                                >
+                                    {{ n }} GB
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </label>
+
+                </div>
+
+                <label>
+                    Storage
+
+                    <select name="storage">
+                        {% for n in [20, 40, 80, 160, 320, 500] %}
+                            <option
+                                value="{{ n }}"
+                                {% if n == 40 %}selected{% endif %}
+                            >
+                                {{ n }} GB
+                            </option>
+                        {% endfor %}
+                    </select>
+                </label>
+
+                <label>CPU scheduling policy
+                    <select name="scheduler" id="scheduler-select">
+                        {% for policy in scheduler_options %}<option value="{{ policy }}" {% if policy == scheduler %}selected{% endif %}>{{ policy }}</option>{% endfor %}
+                    </select>
+                </label>
+                <label id="rr-quantum-control">Round Robin time quantum <small>(seconds · 1–60)</small>
+                    <input type="number" name="rr_quantum" min="1" max="60" value="{{ scheduler_quantum }}" required>
+                </label>
+                <label>Priority <small>(1 = highest, 10 = lowest)</small>
+                    <select name="priority">{% for n in range(1,11) %}<option value="{{ n }}" {% if n == 5 %}selected{% endif %}>{{ n }}</option>{% endfor %}</select>
+                </label>
+                <label>Teaching burst length <small>(theory seconds · 1–300)</small>
+                    <input type="number" name="burst_time" min="1" max="300" value="5" required>
+                </label>
+
+                <button type="submit" class="button full-button">
+                    Launch instance →
+                </button>
+
+            </form>
+
+            <small class="limit-note">
+                Reservations are checked against this computer. Disk size is a database allocation, not a physical disk image.
+            </small>
+
+        </section>
+
+        <!-- Storage volumes panel -->
+        <section class="panel volume-panel">
+
+            <div class="panel-head">
+                <div>
+                    <div class="section-kicker">STORAGE</div>
+
+                    <h2>
+                        Volumes
+                        <span class="count-badge">
+                            {{ volumes|length }}
+                        </span>
+                    </h2>
+                </div>
+
+                <span class="panel-icon">▤</span>
+            </div>
+
+            <!-- Create a volume -->
+            <form
+                method="post"
+                action="{{ url_for('create_volume') }}"
+                class="volume-create"
+            >
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token }}"
+                >
+
+                <input
+                    name="name"
+                    required
+                    maxlength="40"
+                    placeholder="Volume name"
+                >
+
+                <select name="size">
+                    {% for n in [10, 20, 40, 80, 160, 500] %}
+                        <option value="{{ n }}">
+                            {{ n }} GB
+                        </option>
+                    {% endfor %}
+                </select>
+
+                <button type="submit">＋</button>
+            </form>
+
+            {% if volumes %}
+
+                <div class="volume-list">
+
+                    {% for vol in volumes %}
+                        <div class="volume-row">
+
+                            <span class="volume-symbol">▤</span>
+
+                            <div class="volume-info">
+                                <b>{{ vol.name }}</b>
+
+                                <small>
+                                    {{ vol.size }} GB ·
+                                    {{ vol.instance_name or 'Unattached' }}
+                                </small>
+                            </div>
+
+                            <div class="volume-actions">
+
+                                {% if vol.instance_id %}
+
+                                    <!-- Detach volume -->
+                                    <form
+                                        method="post"
+                                        action="{{ url_for('volume_action', item_id=vol.id, action='detach') }}"
+                                    >
+                                        <input
+                                            type="hidden"
+                                            name="csrf_token"
+                                            value="{{ csrf_token }}"
+                                        >
+
+                                        <button type="submit" title="Detach">
+                                            ↙
+                                        </button>
+                                    </form>
+
+                                {% else %}
+
+                                    <!-- Attach volume -->
+                                    <form
+                                        method="post"
+                                        action="{{ url_for('volume_action', item_id=vol.id, action='attach') }}"
+                                        class="attach-form"
+                                    >
+                                        <input
+                                            type="hidden"
+                                            name="csrf_token"
+                                            value="{{ csrf_token }}"
+                                        >
+
+                                        <select name="instance_id" required>
+                                            <option value="">
+                                                Attach…
+                                            </option>
+
+                                            {% for vm in instances if vm.user_id == vol.user_id %}
+                                                <option value="{{ vm.id }}">
+                                                    {{ vm.name }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+
+                                        <button type="submit" title="Attach">
+                                            ↗
+                                        </button>
+                                    </form>
+
+                                {% endif %}
+
+                                <!-- Delete volume -->
+                                <form
+                                    method="post"
+                                    action="{{ url_for('volume_action', item_id=vol.id, action='delete') }}"
+                                >
+                                    <input
+                                        type="hidden"
+                                        name="csrf_token"
+                                        value="{{ csrf_token }}"
+                                    >
+
+                                    <button
+                                        type="submit"
+                                        class="danger-action"
+                                        title="Delete volume"
+                                    >
+                                        ×
+                                    </button>
+                                </form>
+
+                            </div>
+                        </div>
+                    {% endfor %}
+
+                </div>
+
+            {% else %}
+
+                <div class="empty-inline">
+                    No volumes yet. Add one above.
+                </div>
+
+            {% endif %}
+
+        </section>
+
+    </aside>
+
+</div>
+
+<!-- Recent activity panel -->
+<section class="panel activity-panel">
+
+    <div class="panel-head">
+        <div>
+            <div class="section-kicker">SAVED IN SQLITE ACTIVITY TABLE</div>
+            <h2>Activity &amp; audit history</h2>
+        </div>
+
+        <span class="panel-icon">⌁</span>
+    </div>
+
+    {% if logs %}
+
+        <div class="activity-list">
+
+            {% for item in logs %}
+                <div class="activity-row">
+
+                    <i class="activity-dot"></i>
+
+                    <div>
+                        <b>{{ item.action }}</b>
+
+                        <small>
+                            {{ item.detail }}
+
+                            {% if current_user.role == 'admin' and item.username %}
+                                · {{ item.username }}
+                            {% endif %}
+                        </small>
+                    </div>
+
+                    <time>{{ item.created_at }}</time>
+
+                </div>
+            {% endfor %}
+
+        </div>
+
+    {% else %}
+
+        <div class="empty-inline">
+            Activity from your lab will show up here.
+        </div>
+
+    {% endif %}
+
+</section>
+
+{% endblock %}

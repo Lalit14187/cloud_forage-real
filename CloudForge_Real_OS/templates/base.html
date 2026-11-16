@@ -1,0 +1,235 @@
+
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#070b15">
+
+    <title>
+        {% block title %}CloudForge{% endblock %} · CloudForge
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='style.css') }}?v=20261016-globe5"
+    >
+</head>
+
+<body>
+
+    <!-- Startup intro screen -->
+    <section
+        class="intro-screen"
+        id="intro"
+        aria-label="CloudForge system startup"
+    >
+        <div class="intro-frame">
+
+            <div class="intro-brand">
+                <span class="brand-mark">✦</span>
+                CLOUDFORGE
+
+                <span class="intro-live">
+                    <i></i>
+                    SYSTEM ONLINE
+                </span>
+            </div>
+
+            <div class="intro-title">
+                A local OS lab, <span>coming online.</span>
+            </div>
+
+            <!-- Frontend, Flask and database connection animation -->
+            <div class="intro-map">
+
+                <div class="intro-node node-front">
+                    <b>01</b>
+                    <span>FRONTEND</span>
+                    <small>Dashboard ready</small>
+                </div>
+
+                <div class="intro-link link-one">
+                    <i></i>
+                </div>
+
+                <div class="intro-node node-api">
+                    <b>02</b>
+                    <span>FLASK API</span>
+                    <small>Requests flowing</small>
+                </div>
+
+                <div class="intro-link link-two">
+                    <i></i>
+                </div>
+
+                <div class="intro-node node-db">
+                    <b>03</b>
+                    <span>SQLITE</span>
+                    <small>Resources stored</small>
+                </div>
+
+            </div>
+
+            <div class="intro-progress">
+                <i></i>
+            </div>
+
+            <div class="intro-foot">
+                <span>CONNECTING YOUR CLOUD WORKSPACE</span>
+                <button type="button" id="skip-intro">
+                    Skip intro ↗
+                </button>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- Animated background -->
+    <div class="ambient">
+
+        <canvas
+            id="cloud-globe"
+            class="globe-canvas"
+            role="img"
+            aria-label="Animated 3D cloud globe"
+        ></canvas>
+
+        <div class="fallback-globe" aria-hidden="true">
+            <i class="globe-clouds"></i>
+            <i class="globe-rim"></i>
+            <i class="globe-orbit"></i>
+        </div>
+
+        <div class="cloud-atmosphere"></div>
+        <div class="ambient-lines"></div>
+
+        <div class="orb orb-a"></div>
+        <div class="orb orb-b"></div>
+        <div class="grid"></div>
+
+        <div class="network" aria-hidden="true">
+            {% for i in range(18) %}
+                <i></i>
+            {% endfor %}
+        </div>
+
+    </div>
+
+    <!-- Page scroll indicator -->
+    <div class="scroll-progress" aria-hidden="true">
+        <i></i>
+    </div>
+
+    <!-- Navigation bar -->
+    <header class="topbar">
+
+        <a class="brand" href="{{ url_for('home') }}">
+            <span class="brand-mark">✦</span>
+
+            <span>
+                cloud<span class="brand-accent">forge</span>
+            </span>
+        </a>
+
+        <div class="nav-right">
+
+            {% if current_user %}
+
+                <span class="user-pill">
+                    <i class="online-dot"></i>
+                    {{ current_user.username }}
+
+                    {% if current_user.role == 'admin' %}
+                        <b class="admin-tag">ADMIN</b>
+                    {% endif %}
+                </span>
+
+                <form
+                    action="{{ url_for('logout') }}"
+                    method="post"
+                >
+                    <input
+                        type="hidden"
+                        name="csrf_token"
+                        value="{{ csrf_token }}"
+                    >
+
+                    <button class="quiet-btn">
+                        Sign out ↗
+                    </button>
+                </form>
+
+            {% else %}
+
+                <a
+                    class="quiet-btn"
+                    href="{{ url_for('login') }}"
+                >
+                    Sign in
+                </a>
+
+                <a
+                    class="button button-small"
+                    href="{{ url_for('register') }}"
+                >
+                    Get started ↗
+                </a>
+
+            {% endif %}
+
+        </div>
+    </header>
+
+    <!-- Main page content -->
+    <main class="page-wrap">
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+
+            {% if messages %}
+
+                <div class="flash-stack">
+
+                    {% for category, message in messages %}
+
+                        <div class="flash {{ category }}">
+                            {{ message }}
+
+                            <button
+                                type="button"
+                                onclick="this.parentElement.remove()"
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                    {% endfor %}
+
+                </div>
+
+            {% endif %}
+
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        CLOUDFORGE
+        <span>·</span>
+        Local OS process learning lab
+        <span>·</span>
+        No virtual machines or cloud resources are created
+    </footer>
+
+    <!-- JavaScript -->
+    <script
+        src="{{ url_for('static', filename='app.js') }}?v=20261016-globe5"
+        defer
+    ></script>
+
+</body>
+</html>

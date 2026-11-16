@@ -1,0 +1,132 @@
+
+{% extends 'base.html' %}
+
+{% block title %}
+    Local compute, made simple
+{% endblock %}
+
+{% block content %}
+
+<!-- Hero section -->
+<section class="hero">
+
+    <!-- Hero text and actions -->
+    <div class="hero-copy">
+
+        <div class="eyebrow">
+            <i class="pulse"></i>
+            YOUR LOCAL OS LAB, READY
+        </div>
+
+        <h1>
+            Build your own<br>
+            <span>little piece</span> of local compute.
+        </h1>
+
+        <p class="hero-lede">
+            Explore operating-system resource management in a friendly,
+            local environment. Start a real worker process, attach logical storage,
+            and see how it all fits together.
+        </p>
+
+        <div class="hero-actions">
+
+            <a
+                class="button"
+                href="{{ url_for('register') }}"
+            >
+                Launch your dashboard →
+            </a>
+
+            <a
+                class="text-link"
+                href="{{ url_for('login') }}"
+            >
+                Already have an account? Sign in
+            </a>
+
+        </div>
+
+        <!-- Platform highlights -->
+        <div class="trust-row">
+            <span>◉ Beginner friendly</span>
+            <span>⌁ Runs on your computer</span>
+            <span>✳ Free to explore</span>
+        </div>
+
+    </div>
+
+    <!-- Animated cloud illustration -->
+    <div class="hero-visual">
+
+        <div class="orbit orbit-one"></div>
+        <div class="orbit orbit-two"></div>
+
+        <div class="cloud-core">
+            <div class="cloud-icon">☁</div>
+            <b>CloudForge</b>
+            <small>LOCAL PROCESS LAB</small>
+        </div>
+
+        <!-- Instance status card -->
+        <div class="float-card card-instance">
+
+            <span class="mini-icon purple">▦</span>
+
+            <span>
+                <b>worker-01</b>
+
+                <small>
+                    <i class="online-dot"></i>
+                    Example · local process
+                </small>
+            </span>
+
+            <strong>↗</strong>
+
+        </div>
+
+        <!-- Storage status card -->
+        <div class="float-card card-storage">
+
+            <span class="mini-icon blue">▤</span>
+
+            <span>
+                <b>volume-01</b>
+                <small>Attached · 40 GB</small>
+            </span>
+
+        </div>
+
+        <div class="hero-caption">
+            A local lab for big ideas ✦
+        </div>
+
+    </div>
+
+</section>
+
+<!-- Feature highlights -->
+<section class="feature-strip">
+
+    <div>
+        <span class="feature-icon">⌘</span>
+        <b>Local processes</b>
+        <small>Monitor host resources and CPU scheduling</small>
+    </div>
+
+    <div>
+        <span class="feature-icon">▤</span>
+        <b>Flexible storage</b>
+        <small>Create and attach volumes</small>
+    </div>
+
+    <div>
+        <span class="feature-icon">⏱</span>
+        <b>Live activity</b>
+        <small>See every action as it happens</small>
+    </div>
+
+</section>
+
+{% endblock %}

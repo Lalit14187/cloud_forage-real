@@ -1,0 +1,105 @@
+
+{% extends 'base.html' %}
+
+{% block title %}
+    {{ 'Create account' if mode == 'register' else 'Welcome back' }}
+{% endblock %}
+
+{% block content %}
+<section class="auth-layout">
+
+    <!-- Left side information -->
+    <div class="auth-aside">
+        <div class="eyebrow">
+            <i class="pulse"></i>
+            YOUR LOCAL OS LAB
+        </div>
+
+        <h1>
+            {{ 'Start exploring.' if mode == 'register' else 'Good to see you.' }}
+        </h1>
+
+        <p>
+            {{ 'Create a free local account and manage real local worker processes.'
+                if mode == 'register'
+                else 'Sign in to pick up where your local process lab left off.' }}
+        </p>
+
+        <div class="aside-note">
+            ✦ Everything stays on this computer.
+        </div>
+    </div>
+
+    <!-- Right side authentication card -->
+    <div class="auth-card">
+
+        <a class="brand mini-brand" href="{{ url_for('home') }}">
+            <span class="brand-mark">✦</span>
+            cloud<span class="brand-accent">forge</span>
+        </a>
+
+        <h2>
+            {{ 'Create your account' if mode == 'register' else 'Welcome back' }}
+        </h2>
+
+        <p class="muted">
+            {{ 'A few details and your lab is ready.'
+                if mode == 'register'
+                else 'Enter your details to continue.' }}
+        </p>
+
+        <!-- Login and registration form -->
+        <form method="post" class="form-stack">
+
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="{{ csrf_token }}"
+            >
+
+            <label>
+                Username
+                <input
+                    name="username"
+                    required
+                    minlength="3"
+                    maxlength="32"
+                    autocomplete="username"
+                    placeholder="e.g. alex_cloud"
+                >
+            </label>
+
+            <label>
+                Password
+                <input
+                    name="password"
+                    required
+                    minlength="8"
+                    type="password"
+                    autocomplete="{{ 'new-password' if mode == 'register' else 'current-password' }}"
+                    placeholder="At least 8 characters"
+                >
+            </label>
+
+            <button class="button full-button">
+                {{ 'Create account' if mode == 'register' else 'Sign in' }} →
+            </button>
+
+        </form>
+
+        <!-- Switch between login and registration -->
+        <p class="auth-switch">
+            {{ 'Already have an account?' if mode == 'register' else 'New to CloudForge?' }}
+
+            <a href="{{ url_for('login' if mode == 'register' else 'register') }}">
+                {{ 'Sign in' if mode == 'register' else 'Create an account' }}
+            </a>
+        </p>
+
+        <div class="safe-note">
+            🔒 Passwords are securely hashed before they are saved.
+        </div>
+
+    </div>
+</section>
+{% endblock %}

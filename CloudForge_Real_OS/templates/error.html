@@ -1,0 +1,34 @@
+
+{% extends 'base.html' %}
+
+{% block title %}
+    {{ code }}
+{% endblock %}
+
+{% block content %}
+
+<!-- Error page -->
+<section class="error-card">
+
+    <div class="eyebrow">
+        CLOUDFORGE · {{ code }}
+    </div>
+
+    <h1>
+        Oops, we hit a small cloud.
+    </h1>
+
+    <p>
+        {{ message }}
+    </p>
+
+    <a
+        class="button"
+        href="{{ url_for('dashboard') if current_user else url_for('home') }}"
+    >
+        Back to safety →
+    </a>
+
+</section>
+
+{% endblock %}
